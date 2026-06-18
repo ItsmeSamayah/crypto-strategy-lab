@@ -1,0 +1,19 @@
+{
+    "balance": 4988.055606178569,
+    "open_position": {
+        "action": "SELL",
+        "price": 71.46,
+        "quantity": 34.9010327888229,
+        "opened_at": "2026-06-18T18:16:49.126532",
+        "trailing_sl": 71.46
+    },
+    "realized_pnl": -11.944393821430305,
+    "cooldown_remaining": 0,
+    "journal_entry": {
+        "opened_at": "2026-06-18 18:16:49",
+        "action": "SELL",
+        "entry_price": 71.46,
+        "quantity": 34.9010327888229,
+        "reason": "Balanced Signal"
+    }
+}

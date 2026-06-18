@@ -1,15 +1,17 @@
 """
-Main entry point for the Paper Trading Bot.
+Main entry point for the Multi-Asset Paper Trading Bot.
 """
 import time
 import pandas as pd
 import ccxt
 from datetime import datetime
-from config import EXCHANGE_ID, SYMBOL, TIMEFRAME, INITIAL_BALANCE_INR, POLL_INTERVAL_SECONDS
+from config import EXCHANGE_ID, TIMEFRAME, POLL_INTERVAL_SECONDS, ASSETS, INITIAL_CAPITAL, TRADING_PROFILES, MTF_TIMEFRAMES
 from logger import logger
 from paper_wallet import PaperWallet
 from indicators import calculate_indicators
-from strategy import evaluate_consensus
+from strategy import evaluate_consensus, evaluate_multi_timeframe, check_mtf_confirmation
+from utils import get_active_strategy
+import threading
 
 def fetch_data(exchange, symbol, timeframe, limit=100):
     try:
@@ -18,156 +20,110 @@ def fetch_data(exchange, symbol, timeframe, limit=100):
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
     except Exception as e:
-        logger.error(f"Error fetching data: {e}")
+        logger.error(f"Error fetching data for {symbol}: {e}")
         return None
 
-def print_dashboard(current_price, votes, consensus, wallet):
-    print("\n" + "="*40)
-    print(f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"BTC Price: {current_price:.2f}")
-    print("-" * 40)
-    for ind, vote in votes.items():
-        print(f"{ind}: {vote}")
-    print("-" * 40)
-    print(f"Consensus: {consensus}")
-    print("-" * 40)
-    print(f"Balance: ₹{wallet.balance:.2f}")
-    print(f"Open Position Status: {wallet.get_status(current_price)}")
-    print("="*40 + "\n")
-
-def run_bot():
-    logger.info("Starting Paper Trading Bot...")
-    logger.info(f"Exchange: {EXCHANGE_ID}, Symbol: {SYMBOL}, Timeframe: {TIMEFRAME}")
+def run_asset(asset_symbol):
+    """Run trading bot for a single asset, executing the user-selected profile."""
+    # Parse asset symbol like BTC/USDT to get BTC
+    name = asset_symbol.split('/')[0]
+    initial_capital = INITIAL_CAPITAL.get(name, 5000)
+    
+    logger.info(f"Starting Trading Bot Thread for {name} ({asset_symbol})")
     
     exchange_class = getattr(ccxt, EXCHANGE_ID)
     exchange = exchange_class({'enableRateLimit': True})
     
-    wallet = PaperWallet(initial_balance=INITIAL_BALANCE_INR)
-
+    # Initialize a single wallet for this asset
+    wallet = PaperWallet(initial_balance=initial_capital, asset_name=name)
+    
     while True:
         try:
-            # Fetch data
-            df = fetch_data(exchange, SYMBOL, TIMEFRAME, limit=100)
-            if df is not None and not df.empty:
-                # Calculate indicators
-                df = calculate_indicators(df)
-                
-                current_price = df.iloc[-1]['close']
-                
-                # Check Risk Management first
-                if wallet.open_position:
-                    closed = wallet.check_sl_tp(current_price)
-                    if closed:
-                        logger.info("Position closed due to SL/TP.")
-                
-                # Evaluate strategy
-                votes, consensus, *_ = evaluate_consensus(df)
-                
-                # Execute based on consensus
-                if consensus != 'HOLD':
-                    wallet.execute_trade(consensus, current_price, reason="Consensus")
-                
-                # Print Dashboard
-                print_dashboard(current_price, votes, consensus, wallet)
-                
-        except Exception as e:
-            logger.error(f"Unexpected error in main loop: {e}")
+            # 1. Read active profile from disk dynamically on each tick
+            active_profile = get_active_strategy(name)
+            p_cfg = TRADING_PROFILES.get(active_profile, TRADING_PROFILES['Balanced'])
             
+            # 2. Fetch main timeframe data
+            df = fetch_data(exchange, asset_symbol, TIMEFRAME, limit=100)
+            if df is not None and not df.empty:
+                # 3. Calculate main indicators
+                df = calculate_indicators(df)
+                current_price = float(df.iloc[-1]['close'])
+                atr_val = float(df.iloc[-1].get('ATR_14', 0.0))
+                
+                # 4. Fetch & calculate MTF data
+                mtf_data = {}
+                for tf in MTF_TIMEFRAMES:
+                    mtf_df = fetch_data(exchange, asset_symbol, tf, limit=50)
+                    if mtf_df is not None and not mtf_df.empty:
+                        mtf_data[tf] = calculate_indicators(mtf_df)
+                
+                mtf_trends = evaluate_multi_timeframe(mtf_data)
+                
+                # 5. Fetch BTC/USDT data for correlation filter if not BTC
+                btc_df = None
+                if name != "BTC":
+                    btc_df = fetch_data(exchange, "BTC/USDT", TIMEFRAME, limit=100)
+                    if btc_df is not None and not btc_df.empty:
+                        btc_df = calculate_indicators(btc_df)
+                
+                # 6. Check Risk Management (SL/TP)
+                if wallet.open_position:
+                    closed = wallet.check_sl_tp(current_price, atr_val)
+                    if closed:
+                        logger.info(f"[{name}] Position closed due to SL/TP.")
+                
+                wallet.tick_cooldown()
+                
+                # 7. Evaluate Consensus using Smart Market Regime, AI Confidence Score, and BTC Correlation
+                votes, consensus, regime, adx_val, atr_ret, vol_state, block_msg, confidence_score, trade_quality = evaluate_consensus(
+                    df, 
+                    threshold=p_cfg['consensus_threshold'], 
+                    adx_threshold=p_cfg['adx_threshold'], 
+                    cooldown_candles_left=wallet.cooldown_remaining,
+                    mtf_trends=mtf_trends,
+                    btc_df=btc_df,
+                    asset_name=name
+                )
+                
+                # 8. Record correlation status
+                btc_corr_status = "PASSED"
+                if "correlation" in block_msg.lower():
+                    btc_corr_status = "BLOCKED"
+                
+                # Format trade execution metadata for logs & journals
+                log_reason = f"{active_profile} | Regime: {regime} | Conf: {confidence_score} ({trade_quality}) | BTC Corr: {btc_corr_status}"
+                
+                # Execute based on final consensus
+                if consensus != 'HOLD':
+                    wallet.execute_trade(consensus, current_price, trading_mode="Long + Short", reason=log_reason)
+                    logger.info(f"[{name}] Executed trade: {consensus} @ {current_price} | Info: {log_reason}")
+                elif block_msg:
+                    # Write diagnostic to log
+                    logger.debug(f"[{name}] Signal block details: {block_msg} | {log_reason}")
+                        
+        except Exception as e:
+            logger.error(f"Unexpected error in main loop for {name}: {e}")
+        
         time.sleep(POLL_INTERVAL_SECONDS)
 
-def backtest():
-    """
-    Simple backtest module using historical data.
-    """
-    print("\n--- Running Backtest ---")
-    exchange_class = getattr(ccxt, EXCHANGE_ID)
-    exchange = exchange_class({'enableRateLimit': True})
+def run_bot():
+    """Start trading bots for each asset in parallel."""
+    threads = []
+    for asset_symbol in ASSETS:
+        t = threading.Thread(target=run_asset, args=(asset_symbol,), daemon=True)
+        t.start()
+        threads.append(t)
     
-    wallet = PaperWallet(initial_balance=INITIAL_BALANCE_INR)
-    
-    # Fetch a larger chunk of data for backtesting
-    df = fetch_data(exchange, SYMBOL, TIMEFRAME, limit=1000)
-    if df is None or df.empty:
-        print("Failed to fetch data for backtesting.")
-        return
-        
-    df = calculate_indicators(df)
-    
-    # Track metrics
-    trades_count = 0
-    winning_trades = 0
-    gross_profit = 0.0
-    gross_loss = 0.0
-    peak_balance = wallet.balance
-    max_drawdown = 0.0
-    
-    # Simulate step by step from index 50 to end
-    for i in range(50, len(df)):
-        sub_df = df.iloc[:i+1]
-        current_price = sub_df.iloc[-1]['close']
-        
-        # Check SL/TP
-        if wallet.open_position:
-            entry = wallet.open_position['price']
-            action = wallet.open_position['action']
-            qty = wallet.open_position['quantity']
-            
-            closed = wallet.check_sl_tp(current_price)
-            if closed:
-                pnl = wallet.realized_pnl - getattr(wallet, '_last_realized_pnl', wallet.realized_pnl)
-                trades_count += 1
-                if pnl > 0:
-                    winning_trades += 1
-                    gross_profit += pnl
-                else:
-                    gross_loss += abs(pnl)
-                wallet._last_realized_pnl = wallet.realized_pnl
-
-        # Evaluate strategy
-        votes, consensus, *_ = evaluate_consensus(sub_df)
-        
-        # Execute
-        if consensus == 'BUY' and not wallet.open_position:
-            wallet.execute_trade('BUY', current_price, reason="Consensus")
-            wallet._last_realized_pnl = wallet.realized_pnl
-        elif consensus == 'SELL' and wallet.open_position:
-            wallet.close_position(current_price, "Consensus")
-            pnl = wallet.realized_pnl - wallet._last_realized_pnl
-            trades_count += 1
-            if pnl > 0:
-                winning_trades += 1
-                gross_profit += pnl
-            else:
-                gross_loss += abs(pnl)
-                
-        # Drawdown tracking
-        if wallet.balance > peak_balance:
-            peak_balance = wallet.balance
-        dd = (peak_balance - wallet.balance) / peak_balance * 100
-        if dd > max_drawdown:
-            max_drawdown = dd
-            
-    # Final metrics
-    total_return_pct = ((wallet.balance - INITIAL_BALANCE_INR) / INITIAL_BALANCE_INR) * 100
-    win_rate = (winning_trades / trades_count * 100) if trades_count > 0 else 0.0
-    profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (float('inf') if gross_profit > 0 else 0.0)
-    
-    print(f"Total Return: {total_return_pct:.2f}%")
-    print(f"Number of Trades: {trades_count}")
-    print(f"Win Rate: {win_rate:.2f}%")
-    print(f"Max drawdown: {max_drawdown:.2f}%")
-    print(f"Profit Factor: {profit_factor:.2f}")
-    print(f"Final Balance: ₹{wallet.balance:.2f}")
-    print("------------------------\n")
+    # Keep main thread alive
+    for t in threads:
+        t.join()
 
 if __name__ == "__main__":
-    import sys
     try:
-        if len(sys.argv) > 1 and sys.argv[1] == '--backtest':
-            backtest()
-        else:
-            run_bot()
+        logger.info("Initializing Multi-Asset Engine with Advanced Strategy Pack...")
+        run_bot()
+    except KeyboardInterrupt:
+        print("\nShutting down bots...")
     except Exception as e:
         print(f"\nCRITICAL ERROR: {e}")
-    finally:
-        input("\nPress Enter to exit...")

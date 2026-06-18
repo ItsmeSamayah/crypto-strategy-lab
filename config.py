@@ -35,6 +35,31 @@ MIN_ATR_RATIO = 0.001       # ATR must be > 0.1% of price to allow trades
 ADX_TREND_THRESHOLD = 20    # ADX > 20 = Trending, ADX < 20 = Sideways
 COOLDOWN_CANDLES = 3         # Minimum candles to wait after closing a trade
 
+# Bollinger Bands Settings
+BB_PERIOD = 20
+BB_STD_DEV = 2.0
+
+# Smart Market Regime Thresholds
+REGIME_ADX_TRENDING = 25     # ADX >= 25 is trending
+REGIME_ATR_VOLATILITY = 0.02 # ATR/price > 2% is high volatility
+
+# AI Confidence Score Weights (Sum to 100)
+WEIGHTS = {
+    "RSI": 15,
+    "MACD": 15,
+    "EMA": 15,
+    "Momentum": 10,
+    "Volume": 10,
+    "ADX": 15,
+    "ATR": 10,
+    "MTF": 10
+}
+CONFIDENCE_THRESHOLD = 60    # Min score to allow trades
+
+# BTC Correlation Filter Settings
+BTC_STRONG_TREND_THRESHOLD = 20
+CORRELATION_BLOCK_ENABLED = True
+
 # Multi-Timeframe Confirmation
 MTF_TIMEFRAMES = ['5m', '15m', '1h']
 
@@ -45,10 +70,24 @@ TELEGRAM_CHAT_ID = ''
 
 # Trading Profiles
 TRADING_PROFILES = {
-    'Conservative': {'consensus_threshold': 4, 'adx_threshold': 20},
-    'Balanced':     {'consensus_threshold': 3, 'adx_threshold': 15},
-    'Aggressive':   {'consensus_threshold': 2, 'adx_threshold': 10},
+    'Conservative': {'consensus_threshold': 4, 'adx_threshold': 20, 'enable_mtf': True},
+    'Balanced':     {'consensus_threshold': 3, 'adx_threshold': 15, 'enable_mtf': True},
+    'Aggressive':   {'consensus_threshold': 2, 'adx_threshold': 10, 'enable_mtf': False},
+    'Scalper':      {'consensus_threshold': 2, 'adx_threshold': 5,  'enable_mtf': False},
 }
 
 # Diagnostics
 DIAGNOSTICS_FILE = 'diagnostics.csv'
+
+# Multi‑Asset configuration
+ASSETS = [
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT"
+]
+
+INITIAL_CAPITAL = {
+    "BTC": 5000,
+    "ETH": 5000,
+    "SOL": 5000
+}

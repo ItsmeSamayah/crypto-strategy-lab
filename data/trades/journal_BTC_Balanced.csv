@@ -1,0 +1,4 @@
+Timestamp,Action,Entry Price,Exit Price,Quantity,Profit/Loss,Profit %,Trade Duration,Signal Reason
+2026-06-18 16:16:10,SELL,63997.6,64150.0,0.039064,-5.9533,-0.24,35 min,Balanced Signal
+2026-06-18 17:51:40,SELL,64135.01,64154.35,0.038934,-0.753,-0.03,80 min,Balanced Signal
+2026-06-18 18:21:49,SELL,64196.0,64375.96,0.038891,-6.9988,-0.28,20 min,Balanced Signal

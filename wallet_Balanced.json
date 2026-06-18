@@ -1,19 +1,19 @@
 {
-    "balance": 5005.3689670060385,
+    "balance": 4989.121669447806,
     "open_position": {
         "action": "SELL",
-        "price": 64048.0,
-        "quantity": 0.039075138700709146,
-        "opened_at": "2026-06-18T12:00:02.613237",
+        "price": 64452.0,
+        "quantity": 0.03870416487810934,
+        "opened_at": "2026-06-18T13:03:02.470429",
         "trailing_sl": null
     },
-    "realized_pnl": 5.368967006038809,
+    "realized_pnl": -10.878330552193438,
     "cooldown_remaining": 0,
     "journal_entry": {
-        "opened_at": "2026-06-18 12:00:02",
+        "opened_at": "2026-06-18 13:03:02",
         "action": "SELL",
-        "entry_price": 64048.0,
-        "quantity": 0.039075138700709146,
+        "entry_price": 64452.0,
+        "quantity": 0.03870416487810934,
         "reason": "Consensus"
     }
 }

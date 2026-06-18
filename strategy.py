@@ -1,34 +1,50 @@
 """
-Consensus Engine Strategy Module.
-Includes: Market Regime Filter (ADX), ATR Volatility Filter, Cooldown Logic,
-           Multi-Timeframe Confirmation.
+Consensus Engine Strategy Module with Advanced Strategy Upgrade Pack.
+Includes: Smart Market Regime Engine, AI Confidence Score Engine, and BTC Correlation Filter.
 """
-from config import ADX_TREND_THRESHOLD, MIN_ATR_RATIO, COOLDOWN_CANDLES
+import importlib.util
+from pathlib import Path
+
+# Force load local config.py
+config_path = Path(__file__).parent / "config.py"
+spec = importlib.util.spec_from_file_location("local_config", config_path)
+bot_config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(bot_config)
+
+MIN_ATR_RATIO = bot_config.MIN_ATR_RATIO
+COOLDOWN_CANDLES = bot_config.COOLDOWN_CANDLES
+REGIME_ADX_TRENDING = bot_config.REGIME_ADX_TRENDING
+REGIME_ATR_VOLATILITY = bot_config.REGIME_ATR_VOLATILITY
+CONFIDENCE_THRESHOLD = bot_config.CONFIDENCE_THRESHOLD
+WEIGHTS = bot_config.WEIGHTS
+
 from indicators import calculate_indicators
 
 
-def get_market_regime(df, adx_threshold=20):
+def get_market_regime(df, adx_threshold=25, volatility_threshold=0.02):
     """
     Returns (regime, adx_val, atr_val, volatility_state).
-    regime:           TRENDING | SIDEWAYS
+    regime:           TRENDING | RANGING | HIGH_VOLATILITY
     volatility_state: HIGH VOLATILITY | NORMAL | LOW VOLATILITY
     """
     if 'ADX_14' not in df.columns or 'ATR_14' not in df.columns:
-        return "UNKNOWN", 0.0, 0.0, "UNKNOWN"
+        return "RANGING", 0.0, 0.0, "UNKNOWN"
 
-    adx_val = float(df.iloc[-1].get('ADX_14', 0.0))
-    atr_val = float(df.iloc[-1].get('ATR_14', 0.0))
-    price   = float(df.iloc[-1]['close'])
+    current = df.iloc[-1]
+    adx_val = float(current.get('ADX_14', 0.0))
+    atr_val = float(current.get('ATR_14', 0.0))
+    price   = float(current['close'])
     ratio   = atr_val / price if price > 0 else 0.0
 
-    regime = "TRENDING" if adx_val >= adx_threshold else "SIDEWAYS"
-
-    if ratio < MIN_ATR_RATIO:
-        vol_state = "LOW VOLATILITY"
-    elif ratio > 0.02:  # ATR > 2% of price
+    if ratio >= volatility_threshold:
         vol_state = "HIGH VOLATILITY"
+        regime = "HIGH_VOLATILITY"
+    elif adx_val >= adx_threshold:
+        vol_state = "NORMAL"
+        regime = "TRENDING"
     else:
         vol_state = "NORMAL"
+        regime = "RANGING"
 
     return regime, round(adx_val, 2), round(atr_val, 2), vol_state
 
@@ -78,10 +94,7 @@ def evaluate_multi_timeframe(mtf_data: dict[str, 'pd.DataFrame']):
 
 def check_mtf_confirmation(consensus: str, mtf_trends: dict) -> tuple[bool, str]:
     """
-    Multi-Timeframe Confirmation:
-      BUY  allowed only when 5m=BUY/BULLISH, 15m=BULLISH, 1h=BULLISH
-      SELL allowed only when 5m=SELL/BEARISH, 15m=BEARISH, 1h=BEARISH
-    Returns (confirmed: bool, reason: str)
+    Multi-Timeframe Confirmation check.
     """
     if consensus == "HOLD":
         return True, ""
@@ -106,25 +119,28 @@ def check_mtf_confirmation(consensus: str, mtf_trends: dict) -> tuple[bool, str]
     return True, ""
 
 
-def evaluate_consensus(df, threshold=3, adx_threshold=20, cooldown_candles_left=0):
+def evaluate_consensus(df, threshold=3, adx_threshold=25, cooldown_candles_left=0, mtf_trends=None, btc_df=None, asset_name="BTC"):
     """
-    Evaluates the last candle and returns:
-      votes, consensus, regime, adx_val, atr_val, vol_state, block_msg
+    Evaluates indicators dynamically based on the current market regime.
+    Returns:
+      votes, consensus, regime, adx_val, atr_val, vol_state, block_msg, confidence_score, trade_quality
     """
     hold_result = (
         {"RSI": "HOLD", "MACD": "HOLD", "EMA": "HOLD", "Momentum": "HOLD", "Volume": "HOLD"},
-        "HOLD", "UNKNOWN", 0.0, 0.0, "UNKNOWN", ""
+        "HOLD", "UNKNOWN", 0.0, 0.0, "UNKNOWN", "", 0, "C Poor (No Trade)"
     )
 
     if len(df) < 50:
         return hold_result
 
+    # 1. Detect regime
     regime, adx_val, atr_val, vol_state = get_market_regime(df, adx_threshold=adx_threshold)
     vol_ok, _ = is_volatility_ok(df)
 
     current  = df.iloc[-1]
     previous = df.iloc[-2]
 
+    # Calculate standard votes for Conflict Radar
     votes = {
         "RSI":      "HOLD",
         "MACD":     "HOLD",
@@ -172,30 +188,111 @@ def evaluate_consensus(df, threshold=3, adx_threshold=20, cooldown_candles_left=
     elif vol_curr < vol_sma20:
         votes["Volume"] = "SELL"
 
-    # Count raw votes
-    buy_votes  = list(votes.values()).count("BUY")
-    sell_votes = list(votes.values()).count("SELL")
+    # 2. Dynamic Regime Core Strategy Selection
+    raw_consensus = "HOLD"
 
-    if buy_votes >= threshold:
-        raw_consensus = "BUY"
-    elif sell_votes >= threshold:
-        raw_consensus = "SELL"
-    else:
-        raw_consensus = "HOLD"
+    if regime == "TRENDING":
+        # Trend Following: EMA & MACD must agree
+        if votes["EMA"] == votes["MACD"] and votes["EMA"] != "HOLD":
+            raw_consensus = votes["EMA"]
+    elif regime == "RANGING":
+        # Mean Reversion: RSI or Bollinger Band touch
+        upper_bb = current.get('BB_upper', 999999)
+        lower_bb = current.get('BB_lower', 0)
+        close_price = current['close']
+        
+        if rsi_val < 35 or close_price <= lower_bb:
+            raw_consensus = "BUY"
+        elif rsi_val > 65 or close_price >= upper_bb:
+            raw_consensus = "SELL"
+    elif regime == "HIGH_VOLATILITY":
+        # Volatility Breakout: Price breaks Bollinger Bands Upper/Lower
+        upper_bb = current.get('BB_upper', 999999)
+        lower_bb = current.get('BB_lower', 0)
+        close_price = current['close']
+        
+        if close_price > upper_bb and current['close'] > previous['close']:
+            raw_consensus = "BUY"
+        elif close_price < lower_bb and current['close'] < previous['close']:
+            raw_consensus = "SELL"
+
+    # 3. AI Confidence Score Engine
+    confidence_score = 0
+    trade_quality = "C Poor (No Trade)"
+
+    if raw_consensus != "HOLD":
+        score = 0
+        # Check alignment of each indicator with direction
+        if votes["RSI"] == raw_consensus: score += WEIGHTS.get("RSI", 15)
+        if votes["MACD"] == raw_consensus: score += WEIGHTS.get("MACD", 15)
+        if votes["EMA"] == raw_consensus: score += WEIGHTS.get("EMA", 15)
+        if votes["Momentum"] == raw_consensus: score += WEIGHTS.get("Momentum", 10)
+        if votes["Volume"] == raw_consensus: score += WEIGHTS.get("Volume", 10)
+
+        # ADX alignment based on regime
+        if regime == "TRENDING" and adx_val >= 25:
+            score += WEIGHTS.get("ADX", 15)
+        elif regime == "RANGING" and adx_val < 25:
+            score += WEIGHTS.get("ADX", 15)
+        else:
+            score += WEIGHTS.get("ADX", 15) * 0.5
+
+        # ATR validation
+        if vol_ok:
+            score += WEIGHTS.get("ATR", 10)
+
+        # MTF trend confirmation
+        if mtf_trends:
+            aligned_tfs = 0
+            expected_trend = "BULLISH" if raw_consensus == "BUY" else "BEARISH"
+            if mtf_trends.get('15m') == expected_trend: aligned_tfs += 1
+            if mtf_trends.get('1h') == expected_trend: aligned_tfs += 1
+            score += WEIGHTS.get("MTF", 10) * (aligned_tfs / 2)
+
+        confidence_score = int(score)
+
+        if confidence_score >= 80:
+            trade_quality = "A+ Excellent"
+        elif confidence_score >= 70:
+            trade_quality = "A Good"
+        elif confidence_score >= 60:
+            trade_quality = "B Moderate"
+        else:
+            trade_quality = "C Poor"
 
     # Apply filters
     block_msg = ""
 
-    if regime == "SIDEWAYS" and raw_consensus != "HOLD":
-        block_msg = f"Blocked – Sideways market (ADX {adx_val:.1f} < {adx_threshold})"
-        return votes, "HOLD", regime, adx_val, atr_val, vol_state, block_msg
+    # Confidence Threshold Check
+    if raw_consensus != "HOLD" and confidence_score < CONFIDENCE_THRESHOLD:
+        block_msg = f"Blocked – Low confidence ({confidence_score} < {CONFIDENCE_THRESHOLD})"
+        raw_consensus = "HOLD"
 
+    # 4. BTC Correlation Filter (ETH & SOL only)
+    if asset_name != "BTC" and btc_df is not None and not btc_df.empty:
+        btc_current = btc_df.iloc[-1]
+        btc_ema20 = btc_current.get('EMA_20', 0)
+        btc_ema50 = btc_current.get('EMA_50', 0)
+        btc_adx = btc_current.get('ADX_14', 0)
+        
+        strong_downtrend = (btc_ema20 < btc_ema50) and (btc_adx > 20)
+        strong_uptrend = (btc_ema20 > btc_ema50) and (btc_adx > 20)
+        
+        if raw_consensus == "BUY" and strong_downtrend:
+            block_msg = "Blocked – Strong BTC Downtrend correlation filter"
+            raw_consensus = "HOLD"
+        elif raw_consensus == "SELL" and strong_uptrend:
+            block_msg = "Blocked – Strong BTC Uptrend correlation filter"
+            raw_consensus = "HOLD"
+
+    # Volatility Filter (minimum threshold)
     if not vol_ok and raw_consensus != "HOLD":
         block_msg = f"Blocked – Volatility too low (ATR {atr_val:.2f})"
-        return votes, "HOLD", regime, adx_val, atr_val, vol_state, block_msg
+        raw_consensus = "HOLD"
 
+    # Cooldown Check
     if cooldown_candles_left > 0 and raw_consensus != "HOLD":
         block_msg = f"Blocked – Cooldown ({cooldown_candles_left} candle(s) remaining)"
-        return votes, "HOLD", regime, adx_val, atr_val, vol_state, block_msg
+        raw_consensus = "HOLD"
 
-    return votes, raw_consensus, regime, adx_val, atr_val, vol_state, block_msg
+    return votes, raw_consensus, regime, adx_val, atr_val, vol_state, block_msg, confidence_score, trade_quality

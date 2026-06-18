@@ -1,0 +1,11 @@
+Timestamp,Action,Entry Price,Exit Price,Quantity,Profit/Loss,Profit %,Trade Duration,Signal Reason
+2026-06-18 15:51:11,SELL,71.28,71.2,35.072952,2.8058,0.11,10 min,Aggressive Signal
+2026-06-18 16:11:18,SELL,71.2,71.2,35.132063,0.0,0.0,5 min,Aggressive Signal
+2026-06-18 16:46:30,SELL,71.48,70.88,34.994445,20.9967,0.84,20 min,Aggressive Signal
+2026-06-18 17:31:42,SELL,71.18,71.0,35.289425,6.3521,0.25,35 min,Aggressive Signal
+2026-06-18 18:11:05,SELL,71.27,71.53,35.289425,-9.1753,-0.36,24 min,Aggressive Signal
+2026-06-18 18:11:50,SELL,71.27,71.54,35.289425,-9.5281,-0.38,25 min,Aggressive Signal
+2026-06-18 18:23:21,SELL,71.27,71.6,35.289425,-11.6455,-0.46,36 min,Aggressive Signal
+2026-06-18 18:36:58,SELL,71.57,71.6,35.074937,-1.0522,-0.04,15 min,Aggressive Signal
+2026-06-18 18:57:04,BUY,71.68,71.39,35.013771,-10.154,-0.4,5 min,Aggressive Signal
+2026-06-18 19:12:09,SELL,70.86,71.16,35.347306,-10.6042,-0.42,5 min,Aggressive Signal

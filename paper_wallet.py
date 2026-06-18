@@ -16,7 +16,8 @@ from config import (
 
 
 class PaperWallet:
-    def __init__(self, initial_balance: float, profile_name: str = None):
+    def __init__(self, initial_balance: float, asset_name: str = None, profile_name: str = None):
+        self.asset_name = asset_name
         self.profile_name = profile_name
         self.initial_balance = initial_balance
         self.balance = initial_balance
@@ -25,11 +26,24 @@ class PaperWallet:
         self.cooldown_remaining = 0
         self._journal_entry = None
 
-        # Dynamically set filenames based on profile_name
-        self.wallet_state_file = f"wallet_{profile_name}.json" if profile_name else WALLET_STATE_FILE
-        self.trades_log_file = f"trades_{profile_name}.csv" if profile_name else TRADES_LOG_FILE
-        self.trade_journal_file = f"trade_journal_{profile_name}.csv" if profile_name else TRADE_JOURNAL_FILE
-        self.daily_report_file = f"daily_report_{profile_name}.csv" if profile_name else DAILY_REPORT_FILE
+        # Ensure data directories exist
+        os.makedirs(os.path.join('data', 'wallets'), exist_ok=True)
+        os.makedirs(os.path.join('data', 'trades'), exist_ok=True)
+        
+        # Build suffix
+        suffix = ""
+        if asset_name and profile_name:
+            suffix = f"_{asset_name}_{profile_name}"
+        elif asset_name:
+            suffix = f"_{asset_name}"
+        elif profile_name:
+            suffix = f"_{profile_name}"
+
+        # Dynamically set filenames based on suffix
+        self.wallet_state_file = os.path.join('data', 'wallets', f"wallet{suffix}.json") if suffix else WALLET_STATE_FILE
+        self.trades_log_file = os.path.join('data', 'trades', f"trades{suffix}.csv") if suffix else TRADES_LOG_FILE
+        self.trade_journal_file = os.path.join('data', 'trades', f"journal{suffix}.csv") if suffix else TRADE_JOURNAL_FILE
+        self.daily_report_file = os.path.join('data', 'trades', f"daily_report{suffix}.csv") if suffix else DAILY_REPORT_FILE
 
         self.load_from_json()
 

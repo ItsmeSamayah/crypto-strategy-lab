@@ -1,0 +1,19 @@
+{
+    "balance": 4992.393479381211,
+    "open_position": {
+        "action": "BUY",
+        "price": 63912.0,
+        "quantity": 0.03905677712621426,
+        "opened_at": "2026-06-18T19:07:03.692542",
+        "trailing_sl": null
+    },
+    "realized_pnl": -7.606520618788435,
+    "cooldown_remaining": 0,
+    "journal_entry": {
+        "opened_at": "2026-06-18 19:07:03",
+        "action": "BUY",
+        "entry_price": 63912.0,
+        "quantity": 0.03905677712621426,
+        "reason": "Aggressive Signal"
+    }
+}

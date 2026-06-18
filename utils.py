@@ -38,3 +38,32 @@ def write_csv_dict(filepath: str, fieldnames: List[str], rows: List[Dict[str, An
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+def get_active_strategy(asset: str) -> str:
+    """Get the active strategy profile for a given asset from data/active_strategies.json."""
+    import json
+    path = os.path.join('data', 'active_strategies.json')
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+                return data.get(asset, "Balanced")
+        except Exception:
+            pass
+    return "Balanced"
+
+def save_active_strategy(asset: str, strategy: str) -> None:
+    """Save the active strategy profile for a given asset to data/active_strategies.json."""
+    import json
+    ensure_folder('data')
+    path = os.path.join('data', 'active_strategies.json')
+    data = {}
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+        except Exception:
+            pass
+    data[asset] = strategy
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)

@@ -56,4 +56,10 @@ def calculate_indicators(df):
     df['DI_plus_14']  = plus_di
     df['DI_minus_14'] = minus_di
 
+    # ── G. Bollinger Bands (20, 2.0) ──
+    df['BB_middle'] = df['close'].rolling(window=20).mean()
+    bb_std = df['close'].rolling(window=20).std()
+    df['BB_upper'] = df['BB_middle'] + 2.0 * bb_std
+    df['BB_lower'] = df['BB_middle'] - 2.0 * bb_std
+
     return df
