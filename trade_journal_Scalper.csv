@@ -1,0 +1,6 @@
+Timestamp,Action,Entry Price,Exit Price,Quantity,Profit/Loss,Profit %,Trade Duration,Signal Reason
+2026-06-17 22:43:42,BUY,66247.99,65942.82,0.037737,-11.5162,-0.46,53 min,Consensus
+2026-06-18 09:35:44,BUY,64026.0,64015.88,0.038957,-0.3942,-0.02,0 min,Consensus
+2026-06-18 09:38:24,SELL,63939.93,64014.39,0.039006,-2.9044,-0.12,1 min,Consensus
+2026-06-18 09:44:16,SELL,64102.0,63954.38,0.038885,5.7402,0.23,4 min,Consensus
+2026-06-18 10:08:36,SELL,63988.01,63851.16,0.038999,5.337,0.21,22 min,Consensus

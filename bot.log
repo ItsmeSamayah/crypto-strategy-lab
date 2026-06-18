@@ -1,0 +1,36 @@
+2026-06-17 16:01:49,121 - INFO - Starting Paper Trading Bot...
+2026-06-17 16:01:49,122 - INFO - Exchange: coindcx, Symbol: BTC/USDT, Timeframe: 5m
+2026-06-17 16:03:30,475 - INFO - Starting Paper Trading Bot...
+2026-06-17 16:03:30,475 - INFO - Exchange: binance, Symbol: BTC/USDT, Timeframe: 5m
+2026-06-17 16:15:15,951 - INFO - Starting Paper Trading Bot...
+2026-06-17 16:15:15,951 - INFO - Exchange: binance, Symbol: BTC/USDT, Timeframe: 5m
+2026-06-17 17:11:35,103 - ERROR - Error fetching data: binance GET https://api.binance.com/api/v3/exchangeInfo
+2026-06-17 17:12:05,458 - ERROR - Error fetching data: binance GET https://api.binance.com/api/v3/exchangeInfo
+2026-06-17 17:12:36,061 - ERROR - Error fetching data: binance GET https://api.binance.com/api/v3/exchangeInfo
+2026-06-17 17:21:10,139 - INFO - Closed BUY position at 64832.41 | PnL: 0.07 | Reason: Consensus
+2026-06-17 21:02:03,949 - INFO - [NOTIFICATION] [BUY] BUY (Long) @ $65489.46
+2026-06-17 21:12:20,528 - INFO - [NOTIFICATION] [TRAILING_STOP] Trailing stop activated — SL moved to breakeven $65489.46
+2026-06-17 21:28:03,094 - INFO - Closed BUY @ 65842.00 | PnL: 13.4581 | Reason: Consensus
+2026-06-17 21:28:03,102 - INFO - [NOTIFICATION] [SELL] SELL closed Long @ $65842.00
+2026-06-17 21:50:20,363 - INFO - [NOTIFICATION] [BUY] BUY (Long) @ $66247.99
+2026-06-17 21:50:20,375 - INFO - [NOTIFICATION] [BUY] BUY (Long) @ $66247.99
+2026-06-17 22:43:42,823 - INFO - Closed BUY @ 65942.82 | PnL: -11.5162 | Reason: Stop Loss (ATR)
+2026-06-17 22:43:42,833 - INFO - [NOTIFICATION] [STOP_LOSS] Stop Loss hit at $65942.82
+2026-06-17 22:43:42,850 - INFO - Closed BUY @ 65942.82 | PnL: -11.5162 | Reason: Stop Loss (ATR)
+2026-06-17 22:43:42,860 - INFO - [NOTIFICATION] [STOP_LOSS] Stop Loss hit at $65942.82
+2026-06-17 22:48:53,982 - INFO - [NOTIFICATION] [BUY] BUY (Long) @ $65984.01
+2026-06-17 22:49:58,077 - INFO - Closed BUY @ 65958.24 | PnL: -0.9741 | Reason: Consensus
+2026-06-17 22:49:58,082 - INFO - [NOTIFICATION] [SELL] SELL closed Long @ $65958.24
+2026-06-17 22:51:33,352 - INFO - [NOTIFICATION] [SELL] SELL (Short) @ $65966.27
+2026-06-17 22:52:05,203 - INFO - Closed SELL @ 65974.00 | PnL: -0.2922 | Reason: Consensus
+2026-06-17 22:52:05,209 - INFO - [NOTIFICATION] [BUY] BUY closed Short @ $65974.00
+2026-06-17 22:53:40,537 - INFO - [NOTIFICATION] [BUY] BUY (Long) @ $65983.99
+2026-06-17 22:54:12,256 - INFO - Closed BUY @ 65945.00 | PnL: -1.4735 | Reason: Consensus
+2026-06-17 22:54:12,260 - INFO - [NOTIFICATION] [SELL] SELL closed Long @ $65945.00
+2026-06-17 22:55:47,522 - INFO - [NOTIFICATION] [SELL] SELL (Short) @ $65968.00
+2026-06-17 22:56:19,292 - INFO - Closed SELL @ 65987.03 | PnL: -0.7191 | Reason: Consensus
+2026-06-17 22:56:19,297 - INFO - [NOTIFICATION] [BUY] BUY closed Short @ $65987.03
+2026-06-17 22:57:54,474 - INFO - [NOTIFICATION] [SELL] SELL (Short) @ $65912.93
+2026-06-17 23:01:37,953 - INFO - Closed SELL @ 65960.06 | PnL: -1.7822 | Reason: Consensus
+2026-06-17 23:01:37,958 - INFO - [NOTIFICATION] [BUY] BUY closed Short @ $65960.06
+2026-06-17 23:02:57,050 - INFO - [NOTIFICATION] [SELL] SELL (Short) @ $65913.29
