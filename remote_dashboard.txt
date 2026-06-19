@@ -1,4 +1,4 @@
-# Dashboard updated for Streamlit Cloud
+﻿# Dashboard updated for Streamlit Cloud
 
 import pandas as pd
 import streamlit as st
@@ -77,11 +77,11 @@ def load_wallet(name: str, initial_capital: float) -> dict:
         try:
             with open(wallet_file) as f:
                 data = json.load(f)
+            return data
         except Exception:
-            data = {"balance": initial_capital, "position": 0, "last_price": 0, "net_profit": 0}
+            return {"balance": initial_capital, "position": 0, "last_price": None}
     else:
-        data = {"balance": initial_capital, "position": 0, "last_price": 0, "net_profit": 0}
-    return data
+        return {"balance": initial_capital, "position": 0, "last_price": None}
 
 def save_wallet(name: str, wallet: dict):
     wallet_file = WALLETS_DIR / f"wallet_{name}.json"
@@ -98,31 +98,31 @@ def log_trade(name: str, side: str, price: float, amount: float, timestamp: str)
         writer.writerow([timestamp, side, price, amount])
 
 def execute_trade(name: str, signal: str, price: float, wallet: dict):
-    # Ensure safe access with defaults
-    balance = wallet.get("balance", 0)
-    position = wallet.get("position", 0)
-    # Buy: use whole balance if no position
-    if signal == "buy" and position == 0 and balance > 0:
-        amount = balance / price if price else 0
+    # Very naive execution: whole balance used for buy, full position sold on sell
+    if signal == "buy" and wallet["position"] == 0:
+        amount = wallet["balance"] / price
         wallet["position"] = amount
         wallet["balance"] = 0
         wallet["last_price"] = price
-        log_trade(name, "buy", price, amount, datetime.datetime.utcnow().isoformat())
-    # Sell: liquidate existing position
-    elif signal == "sell" and position > 0:
-        proceeds = position * price
+        timestamp = datetime.datetime.utcnow().isoformat()
+        log_trade(name, "buy", price, amount, timestamp)
+    elif signal == "sell" and wallet["position"] > 0:
+        proceeds = wallet["position"] * price
+        amount = wallet["position"]
         wallet["balance"] = proceeds
         wallet["position"] = 0
         wallet["last_price"] = price
-        log_trade(name, "sell", price, proceeds, datetime.datetime.utcnow().isoformat())
+        timestamp = datetime.datetime.utcnow().isoformat()
+        log_trade(name, "sell", price, amount, timestamp)
+    # else hold ÔÇô nothing to do
     return wallet
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="Multi‑Asset Portfolio Dashboard", layout="wide")
-st.title("📊 Multi‑Asset Portfolio Dashboard")
+st.set_page_config(page_title="MultiÔÇæAsset Portfolio Dashboard", layout="wide")
+st.title("­ƒôè MultiÔÇæAsset Portfolio Dashboard")
 st.info(f"Connected Exchange: {EXCHANGE_NAME}")
-# Auto‑refresh every 30 seconds (no experimental_set_query_params needed)
-# Manual refresh button – triggers page rerun
+# AutoÔÇærefresh every 30 seconds (no experimental_set_query_params needed)
+# Manual refresh button ÔÇô triggers page rerun
 if st.button('Refresh Dashboard'):
     if hasattr(st, "rerun"):
         st.rerun()
@@ -130,7 +130,7 @@ if st.button('Refresh Dashboard'):
         st.experimental_rerun()
 
 # Loading spinner while fetching and processing data
-with st.spinner("Fetching live market data & updating portfolio…"):
+with st.spinner("Fetching live market data & updating portfolioÔÇª"):
     wallets = {}
     for asset in ASSETS:
         name = asset["name"]
@@ -143,7 +143,7 @@ with st.spinner("Fetching live market data & updating portfolio…"):
         else:
             latest_price = wallet.get("last_price", 0)
         save_wallet(name, wallet)
-        wallets[name] = wallet.get("balance", 0) + wallet.get("position", 0) * latest_price
+        wallets[name] = wallet["balance"] + wallet.get("position", 0) * latest_price
 
 # Portfolio summary
 total_value = sum(wallets.values())
@@ -161,7 +161,7 @@ for asset in ASSETS:
     if trades_file.exists():
         try:
             df = pd.read_csv(trades_file)
-            total_trades += len(df)  # unchanged
+            total_trades += len(df)
         except Exception:
             pass
 col3.metric("Total Trades", total_trades)
@@ -181,4 +181,4 @@ st.subheader("Asset Leaderboard")
 leaderboard = summary_df.sort_values(by="Net Profit (INR)", ascending=False).reset_index(drop=True)
 st.table(leaderboard)
 
-st.caption(f"Dashboard now fetches live data from {EXCHANGE_NAME}, generates signals, updates wallets, and logs trades automatically every 30 seconds.")
+st.caption(f"Dashboard now fetches live data from {EXCHANGE_NAME}, generates signals, updates wallets, and logs trades automatically every 30ÔÇ»seconds.")
