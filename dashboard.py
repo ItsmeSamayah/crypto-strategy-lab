@@ -1,5 +1,7 @@
-import streamlit as st
+# Dashboard updated for Streamlit Cloud
+
 import pandas as pd
+import streamlit as st
 import json
 import csv
 from pathlib import Path
@@ -107,7 +109,8 @@ st.set_page_config(page_title="Multi‑Asset Portfolio Dashboard", layout="wide"
 st.title("📊 Multi‑Asset Portfolio Dashboard")
 
 # Auto‑refresh every 30 seconds (no experimental_set_query_params needed)
-st.autorefresh(interval=30_000, limit=None, key="dashboard_refresh")
+# Manual refresh button – triggers page rerun
+if st.button('Refresh Dashboard'): st.experimental_rerun()
 
 # Loading spinner while fetching and processing data
 with st.spinner("Fetching live market data & updating portfolio…"):
