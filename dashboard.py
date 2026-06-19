@@ -181,4 +181,4 @@ st.subheader("Asset Leaderboard")
 leaderboard = summary_df.sort_values(by="Net Profit (INR)", ascending=False).reset_index(drop=True)
 st.table(leaderboard)
 
-st.caption("Dashboard now fetches live Binance data, generates signals, updates wallets, and logs trades automatically every 30 seconds.")
+st.caption(f"Dashboard now fetches live data from {EXCHANGE_NAME}, generates signals, updates wallets, and logs trades automatically every 30 seconds.")
