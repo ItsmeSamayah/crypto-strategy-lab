@@ -123,7 +123,11 @@ st.title("📊 Multi‑Asset Portfolio Dashboard")
 st.info(f"Connected Exchange: {EXCHANGE_NAME}")
 # Auto‑refresh every 30 seconds (no experimental_set_query_params needed)
 # Manual refresh button – triggers page rerun
-if st.button('Refresh Dashboard'): st.experimental_rerun()
+if st.button('Refresh Dashboard'):
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:
+        st.experimental_rerun()
 
 # Loading spinner while fetching and processing data
 with st.spinner("Fetching live market data & updating portfolio…"):
