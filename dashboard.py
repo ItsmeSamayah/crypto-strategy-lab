@@ -27,7 +27,20 @@ ASSETS = [
 ]
 
 # Binance exchange via ccxt (public endpoints only)
-binance = ccxt.binance({"enableRateLimit": True})
+# Select a working exchange from the list
+EXCHANGES = ["coinbase", "kraken", "bybit", "okx"]
+def _init_exchange():
+    for name in EXCHANGES:
+        try:
+            ex = getattr(ccxt, name)({"enableRateLimit": True})
+            # Test connection with a minimal request
+            ex.fetch_ohlcv("BTC/USDT", timeframe="1m", limit=1)
+            return name, ex
+        except Exception:
+            continue
+    raise RuntimeError("No accessible exchange found.")
+
+EXCHANGE_NAME, exchange = _init_exchange()
 
 # --- Helper Functions ---
 def fetch_market_data(symbol: str, limit: int = 100):
@@ -35,7 +48,7 @@ def fetch_market_data(symbol: str, limit: int = 100):
     Returns a DataFrame with columns: timestamp, open, high, low, close, volume.
     """
     try:
-        ohlcv = binance.fetch_ohlcv(symbol, timeframe='1m', limit=limit)
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1m', limit=limit)
         df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         return df
@@ -107,7 +120,7 @@ def execute_trade(name: str, signal: str, price: float, wallet: dict):
 # --- Streamlit UI ---
 st.set_page_config(page_title="Multi‑Asset Portfolio Dashboard", layout="wide")
 st.title("📊 Multi‑Asset Portfolio Dashboard")
-
+st.info(f"Connected Exchange: {EXCHANGE_NAME}")
 # Auto‑refresh every 30 seconds (no experimental_set_query_params needed)
 # Manual refresh button – triggers page rerun
 if st.button('Refresh Dashboard'): st.experimental_rerun()
