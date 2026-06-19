@@ -106,8 +106,7 @@ def execute_trade(name: str, signal: str, price: float, wallet: dict):
 st.set_page_config(page_title="Multi‑Asset Portfolio Dashboard", layout="wide")
 st.title("📊 Multi‑Asset Portfolio Dashboard")
 
-# Auto‑refresh every 30 seconds
-st.experimental_set_query_params()
+# Auto‑refresh every 30 seconds (no experimental_set_query_params needed)
 st.autorefresh(interval=30_000, limit=None, key="dashboard_refresh")
 
 # Loading spinner while fetching and processing data
